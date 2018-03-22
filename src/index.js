@@ -1,54 +1,15 @@
-const { createServer } = require('http')
-const express = require('express')
-const bodyParser = require('body-parser')
-const { graphqlExpress, graphiqlExpress } = require('graphql-server-express')
-const { SubscriptionServer } = require('subscriptions-transport-ws')
-const { subscribe, execute } = require('graphql')
-const schema = require('./schema')
+const { GraphQLServer } = require('graphql-yoga')
+
 const db = require('./db')
+const resolvers = require('./resolvers')
 
-const app = express()
-
-const dev = process.env.NODE_ENV !== 'production'
-const PORT = process.env.PORT || 5000
-
-app.use(bodyParser.json())
-
-app.use(
-  '/graphql',
-  graphqlExpress({
-    context: {
-      db
-    },
-    schema
+const server = new GraphQLServer({
+  typeDefs: './src/schema.graphql',
+  resolvers,
+  context: req => ({
+    ...req,
+    db
   })
-)
-
-app.use(
-  '/graphiql',
-  graphiqlExpress({
-    endpointURL: '/graphql',
-    subscriptionsEndpoint: `ws://localhost:${PORT}/subscriptions`
-  })
-)
-
-const server = createServer(app)
-
-server.listen(PORT, err => {
-  if (err) throw err
-
-  new SubscriptionServer(
-    {
-      schema,
-      execute,
-      subscribe,
-      onConnect: () => console.log('Client connected')
-    },
-    {
-      server,
-      path: '/subscriptions'
-    }
-  )
-
-  console.log(`> Ready on PORT ${PORT}`)
 })
+
+server.start(() => console.log('Server is running on localhost:4000'))
